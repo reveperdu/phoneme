@@ -2,13 +2,8 @@ import requests
 import json
 with open("config.json") as f:
     config=json.load(f)
-def dict_replace(s:str,d:dict):
-    for k in d:
-        s=s.replace(k,d[k])
-    return s
-def textcomp_stream(context:str,url:str=config['api_url_s']):
+def textcomp_stream(prom:str,url:str=config['api_url_s']):
     #s=stream
-    prom=dict_replace(context,config["chat_template"])
     data={"prompt":prom}|config['params']
     with requests.post(url, json=data, stream=True) as response:
         for line in response.iter_lines(decode_unicode=True):

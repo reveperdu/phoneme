@@ -1,4 +1,4 @@
-- [ ] add input widget
+- [x] add input widget
 - [ ] handle context logic
 - [ ] rearrange layout
 - [ ] use class for ui
