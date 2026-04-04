@@ -4,7 +4,7 @@
  - [ ] use class for ui
 
 # additional
- - [ ] abstract session structure to decouple widget text
+ - [ ] abstract a stateful session structure to decouple widget text
 
 # long-term
  - [ ] add history file loading/parsing

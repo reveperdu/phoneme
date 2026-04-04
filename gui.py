@@ -1,6 +1,6 @@
 import re
 from PySide6.QtWidgets import (QApplication,QWidget,QPlainTextEdit,QComboBox,
-                               QGridLayout,QPushButton)
+                               QGridLayout,QPushButton,QLineEdit)
 from PySide6.QtGui import QTextCursor
 from PySide6.QtCore import QTimer
 from api import *
@@ -10,7 +10,7 @@ subs_dict={"full-width quotes to half-width":{r'“|”':r'"'},
 app=QApplication()
 window=QWidget()
 maintext=QPlainTextEdit()
-inputtext=QPlainTextEdit()
+inputtext=QLineEdit()
 combo=QComboBox()
 layout=QGridLayout()
 bsubs=QPushButton("regex replace")
@@ -25,7 +25,8 @@ window.show()
 tstream=QTimer()
 '''stream update timer'''
 # logic
-
+no_think=True
+is_retry=False
 def dict_replace(s:str,d:dict):
     for k in d:
         s=s.replace(k,d[k])
@@ -41,7 +42,7 @@ def send():
     global current_stream,last_context
     context=maintext.toPlainText()
     last_context=context
-    inputmsg=inputtext.toPlainText()
+    inputmsg=inputtext.text()
     is_new_turn=True if inputmsg!="" else False
     if is_new_turn:
         context=context+"\n{{[INPUT]}}\n"+inputmsg+"\n{{[OUTPUT]}}\n"
@@ -50,7 +51,7 @@ def send():
     prom=context
     for k in d:
         prom=prom.replace(k,d[k])
-    if is_new_turn:
+    if (is_new_turn or is_retry) and no_think:
         prom=prom+config['nothink_tag']
     inputtext.clear()
     maintext.setPlainText(context)
@@ -58,8 +59,11 @@ def send():
     current_stream=textcomp_stream(prom)
     tstream.start()
 def retry():
+    global is_retry
+    is_retry=True
     maintext.setPlainText(last_context)
     send()
+    is_retry=False
 def stream_tick():
     chunk=next(current_stream,None)
     if chunk is not None:
