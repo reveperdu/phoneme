@@ -15,6 +15,3 @@ def textcomp_stream(context:str,url:str=config['api_url_s']):
             if line.startswith("data: "):
                 tok=json.loads(line.lstrip("data: "))["token"]
                 yield tok
-def handle_stream():
-    #append text to gui
-    pass
