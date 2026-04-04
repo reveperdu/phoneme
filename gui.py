@@ -13,10 +13,12 @@ maintext=QPlainTextEdit()
 inputtext=QPlainTextEdit()
 combo=QComboBox()
 layout=QGridLayout()
-bsubs=QPushButton("Do It")
-button_send=QPushButton("Send")
+bsubs=QPushButton("regex replace")
+bsend=QPushButton("send")
+bretry=QPushButton("retry")
+babort=QPushButton("abort")
 window.setLayout(layout)
-for w in [maintext,inputtext,combo,bsubs,button_send,]:
+for w in [maintext,inputtext,combo,bsubs,bsend,bretry,babort]:
     layout.addWidget(w)
 combo.addItems(list(subs_dict.keys()))
 window.show()
@@ -36,12 +38,14 @@ def text_cb():
         newtext=re.sub(k,d[k],newtext)
     maintext.setPlainText(newtext)
 def send():
-    global current_stream
+    global current_stream,last_context
     context=maintext.toPlainText()
+    last_context=context
     inputmsg=inputtext.toPlainText()
     is_new_turn=True if inputmsg!="" else False
     if is_new_turn:
         context=context+"\n{{[INPUT]}}\n"+inputmsg+"\n{{[OUTPUT]}}\n"
+        last_context=context
     d=config['chat_template']
     prom=context
     for k in d:
@@ -53,6 +57,9 @@ def send():
     maintext.moveCursor(QTextCursor.MoveOperation.End)
     current_stream=textcomp_stream(prom)
     tstream.start()
+def retry():
+    maintext.setPlainText(last_context)
+    send()
 def stream_tick():
     chunk=next(current_stream,None)
     if chunk is not None:
@@ -63,7 +70,9 @@ def stream_tick():
         tstream.stop()
 # ui events
 bsubs.clicked.connect(text_cb)
-button_send.clicked.connect(send)
+bsend.clicked.connect(send)
+bretry.clicked.connect(retry)
+babort.clicked.connect(abort)
 tstream.setInterval(100)
 tstream.timeout.connect(stream_tick)
 # exec
