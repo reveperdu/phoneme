@@ -1,6 +1,6 @@
 # basic
  - [x] add input widget
- - [ ] rearrange layout
+ - [x] rearrange layout
  - [ ] use class for ui
 
 # additional

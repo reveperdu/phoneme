@@ -5,10 +5,11 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
-    QGridLayout,
+    QHBoxLayout,
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -23,19 +24,25 @@ app = QApplication()
 window = QWidget()
 maintext = QPlainTextEdit()
 inputtext = QLineEdit()
+# the combo will be put inside a separate dialog, probably after using class for ui
 combo = QComboBox()
-layout = QGridLayout()
+layout_main = QVBoxLayout()
 bsubs = QPushButton("regex replace")
 bsend = QPushButton("send")
 bretry = QPushButton("retry")
 babort = QPushButton("abort")
-window.setLayout(layout)
-for w in [maintext, inputtext, combo, bsubs, bsend, bretry, babort]:
-    layout.addWidget(w)
+layout_buttons = QHBoxLayout()
+window.setLayout(layout_main)
+for btn in [babort, bretry, bsend]:
+    layout_buttons.addWidget(btn)
+layout_main.addWidget(maintext)
+layout_main.addLayout(layout_buttons)
+layout_main.addWidget(inputtext)
 combo.addItems(list(subs_dict.keys()))
 window.show()
+# stream timer
 tstream = QTimer()
-"""stream update timer"""
+
 # logic
 no_think = True
 is_retry = False
