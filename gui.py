@@ -74,10 +74,11 @@ def send():
         last_context = context
     d = config["chat_template"]
     prom = context
+    if no_think:
+        s1, s2, s3 = prom.rpartition("\n{{[OUTPUT]}}\n")
+        prom = s1 + s2 + config["nothink_tag"] + s3
     for k in d:
         prom = prom.replace(k, d[k])
-    if (is_new_turn or is_retry) and no_think:
-        prom = prom + config["nothink_tag"]
     inputtext.clear()
     maintext.setPlainText(context)
     maintext.moveCursor(QTextCursor.MoveOperation.End)
@@ -110,5 +111,6 @@ bretry.clicked.connect(retry)
 babort.clicked.connect(abort)
 tstream.setInterval(100)
 tstream.timeout.connect(stream_tick)
+inputtext.returnPressed.connect(send)
 # exec
 app.exec()
