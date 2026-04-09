@@ -113,4 +113,5 @@ tstream.setInterval(100)
 tstream.timeout.connect(stream_tick)
 inputtext.returnPressed.connect(send)
 # exec
+maintext.setPlainText(config["default_prompt"])
 app.exec()
