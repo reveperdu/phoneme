@@ -1,7 +1,7 @@
 # basic
  - [x] add input widget
  - [x] rearrange layout
- - [ ] use class for ui
+ - [x] use class for ui
 
 # additional
  - [ ] abstract a stateful session structure to decouple widget text
