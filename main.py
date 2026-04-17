@@ -20,6 +20,6 @@ win = Window(config=config)
 win.maintext.setPlainText(config["default_prompt"])
 win.show()
 # set dark mode
-stylestr = "*{background:#303030;color:white}"
+stylestr = "*{background:#303030;color:white;font-size:16pt}"
 app.setStyleSheet(stylestr)
 app.exec()
