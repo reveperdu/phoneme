@@ -60,7 +60,7 @@ class Window(QWidget):
         is_new_turn = True if inputmsg != "" else False
         if is_new_turn:
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
-            state.last_context = context
+            self.state.last_context = context
         d = self.config["chat_template"]
         prom = context
         if self.config["no_think"]:
