@@ -1,4 +1,3 @@
-import json
 from PySide6.QtWidgets import QApplication
 from window import Window
 
@@ -8,14 +7,11 @@ subs_dict = {
 }
 app = QApplication()
 
-with open("config.json") as f:
-    config = json.load(f)
-
+config_path="config.json"
 # setup ui & app
-win = Window(config=config)
-win.maintext.setPlainText(config["default_prompt"])
+win = Window(config_path=config_path)
 win.show()
 # set dark mode
-stylestr = "*{background:#303030;color:white;font-size:16pt}"
+stylestr =win.config["style"]
 app.setStyleSheet(stylestr)
 app.exec()

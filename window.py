@@ -1,5 +1,5 @@
-from handler import Handler
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -9,36 +9,91 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-
+from api import abort,completion_stream
+import json
+from dataclasses import dataclass
+from typing import Iterator
+@dataclass
+class state():
+    is_retry:bool=False
+    current_stream:None|Iterator=None
+    context:str=""
+    last_context:str=""
 class Window(QWidget):
-    def __init__(self, config):
+    def __init__(self, config_path):
         super().__init__()
-        self.config = config
+        self.setup_ui()
+        self.config_path=config_path
+        self.load_config()
+        self.tstream = QTimer()
+        self.state=state()
+        self.setup_events()
+        self.maintext.setPlainText(self.config["default_prompt"])
+    def setup_ui(self):
         self.maintext = QPlainTextEdit()
         self.inputtext = QLineEdit()
         # the combo will be put inside a separate dialog, probably after using class for ui
         self.combo = QComboBox()
         layout_main = QVBoxLayout()
-        self.subs = QPushButton("regex replace")
-        self.send = QPushButton("send")
-        self.retry = QPushButton("retry")
-        self.abort = QPushButton("abort")
+        self.bsubs = QPushButton("regex replace")
+        self.bsend = QPushButton("send")
+        self.bretry = QPushButton("retry")
+        self.babort = QPushButton("abort")
+        self.breload = QPushButton("reload")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
-        for btn in [self.abort, self.retry, self.send]:
+        for btn in [self.breload,self.babort, self.bretry, self.bsend]:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
         layout_main.addLayout(layout_buttons)
         layout_main.addWidget(self.inputtext)
-        self.tstream = QTimer()
-        self.setup_handler()
-
-    def setup_handler(self):
-        self.handler = Handler(self)
-        self.send.clicked.connect(self.handler.send)
-        self.retry.clicked.connect(self.handler.retry)
-        self.abort.clicked.connect(self.handler.abort)
+    def send(self):
+        context = self.maintext.toPlainText()
+        self.state.last_context = context
+        inputmsg = self.inputtext.text()
+        is_new_turn = True if inputmsg != "" else False
+        if is_new_turn:
+            context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
+            state.last_context = context
+        d = self.config["chat_template"]
+        prom = context
+        if self.config["no_think"]:
+            s1, s2, s3 = prom.rpartition("\n{{[OUTPUT]}}\n")
+            prom = s1 + s2 + self.config["nothink_tag"] + s3
+        for k in d:
+            prom = prom.replace(k, d[k])
+            self.state.current_stream = completion_stream(
+                prom, self.config["api_stream"], self.config["params"]
+            )        
+        self.maintext.moveCursor(QTextCursor.MoveOperation.End)
+        self.inputtext.clear()
+        self.maintext.setPlainText(context)
+        self.tstream.start()
+    def retry(self):
+        self.state.is_retry = True
+        self.maintext.setPlainText(self.state.last_context)
+        self.send()
+        self.state.is_retry = False
+    def abort(self):
+        abort(self.config["api_abort"])
+    def stream_tick(self):
+        assert self.state.current_stream is not None
+        chunk = next(self.state.current_stream, None)
+        if chunk is not None:
+            # "append" gives extra newline
+            self.maintext.moveCursor(QTextCursor.MoveOperation.End)
+            self.maintext.insertPlainText(chunk)
+        else:
+            self.tstream.stop()
+    def load_config(self):
+        with open(self.config_path) as f:
+            config = json.load(f)
+        self.config=config
+    def setup_events(self):
+        self.bsend.clicked.connect(self.send)
+        self.bretry.clicked.connect(self.retry)
+        self.babort.clicked.connect(self.abort)
+        self.breload.clicked.connect(self.retry)
         self.tstream.setInterval(50)
-        self.tstream.timeout.connect(self.handler.stream_tick)
-        self.inputtext.returnPressed.connect(self.handler.send)
+        self.tstream.timeout.connect(self.stream_tick)
+        self.inputtext.returnPressed.connect(self.send)
