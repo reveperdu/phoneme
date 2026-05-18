@@ -7,11 +7,11 @@ subs_dict = {
 }
 app = QApplication()
 
-config_path="config.json"
+config_path = "config.json"
 # setup ui & app
 win = Window(config_path=config_path)
 win.show()
 # set dark mode
-stylestr =win.config["style"]
+stylestr = win.config["style"]
 app.setStyleSheet(stylestr)
 app.exec()

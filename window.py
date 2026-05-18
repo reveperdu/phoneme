@@ -9,26 +9,31 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from api import abort,completion_stream
+from api import abort, completion_stream
 import json
 from dataclasses import dataclass
 from typing import Iterator
+
+
 @dataclass
-class state():
-    is_retry:bool=False
-    current_stream:None|Iterator=None
-    context:str=""
-    last_context:str=""
+class state:
+    is_retry: bool = False
+    current_stream: None | Iterator = None
+    context: str = ""
+    last_context: str = ""
+
+
 class Window(QWidget):
     def __init__(self, config_path):
         super().__init__()
         self.setup_ui()
-        self.config_path=config_path
+        self.config_path = config_path
         self.load_config()
         self.tstream = QTimer()
-        self.state=state()
+        self.state = state()
         self.setup_events()
         self.maintext.setPlainText(self.config["default_prompt"])
+
     def setup_ui(self):
         self.maintext = QPlainTextEdit()
         self.inputtext = QLineEdit()
@@ -42,11 +47,12 @@ class Window(QWidget):
         self.breload = QPushButton("reload")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
-        for btn in [self.breload,self.babort, self.bretry, self.bsend]:
+        for btn in [self.breload, self.babort, self.bretry, self.bsend]:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
         layout_main.addLayout(layout_buttons)
         layout_main.addWidget(self.inputtext)
+
     def send(self):
         context = self.maintext.toPlainText()
         self.state.last_context = context
@@ -64,18 +70,21 @@ class Window(QWidget):
             prom = prom.replace(k, d[k])
             self.state.current_stream = completion_stream(
                 prom, self.config["api_stream"], self.config["params"]
-            )        
+            )
         self.maintext.moveCursor(QTextCursor.MoveOperation.End)
         self.inputtext.clear()
         self.maintext.setPlainText(context)
         self.tstream.start()
+
     def retry(self):
         self.state.is_retry = True
         self.maintext.setPlainText(self.state.last_context)
         self.send()
         self.state.is_retry = False
+
     def abort(self):
         abort(self.config["api_abort"])
+
     def stream_tick(self):
         assert self.state.current_stream is not None
         chunk = next(self.state.current_stream, None)
@@ -85,10 +94,12 @@ class Window(QWidget):
             self.maintext.insertPlainText(chunk)
         else:
             self.tstream.stop()
+
     def load_config(self):
         with open(self.config_path) as f:
             config = json.load(f)
-        self.config=config
+        self.config = config
+
     def setup_events(self):
         self.bsend.clicked.connect(self.send)
         self.bretry.clicked.connect(self.retry)
