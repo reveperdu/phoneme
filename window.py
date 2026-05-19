@@ -9,8 +9,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from api import abort, completion_stream
 from utils import make_subsdict, tool_call_generic
+from api import abort_api, completion_stream_lcpp
 import json
 import re
 from dataclasses import dataclass
@@ -18,12 +18,13 @@ from typing import Iterator
 
 
 @dataclass
-class state:
+class State:
     is_retry: bool = False
     current_stream: None | Iterator = None
     context: str = ""
     last_context: str = ""
     current_output: str = ""
+    should_abort: bool = False
 
 
 class Window(QWidget):
@@ -33,7 +34,7 @@ class Window(QWidget):
         self.config_path = config_path
         self.load_config()
         self.tstream = QTimer()
-        self.state = state()
+        self.state = State()
         self.setup_events()
         self.maintext.setPlainText(self.config["default_prompt"])
 
@@ -72,8 +73,8 @@ class Window(QWidget):
             prom = s1 + s2 + self.config["nothink_tag"] + s3
         for k in d:
             prom = prom.replace(k, d[k])
-            self.state.current_stream = completion_stream(
-                prom, self.config["api_stream"], self.config["params"]
+            self.state.current_stream = completion_stream_lcpp(
+                prom, self.config["api_stream"], self.config["params"], self.state
             )
         # move cursor to end should put at the end because clear
         # and setting text may also move cursor
@@ -89,7 +90,11 @@ class Window(QWidget):
         self.state.is_retry = False
 
     def abort(self):
-        abort(self.config["api_abort"])
+        # lcpp server does not have a abort endpoint
+        # aborting is done by closing connection
+        if self.config["api_abort"] != "":
+            abort_api(self.config["api_abort"])
+        self.state.should_abort = True
 
     def stream_tick(self):
         assert self.state.current_stream is not None
@@ -112,7 +117,7 @@ class Window(QWidget):
         self.bsend.clicked.connect(self.send)
         self.bretry.clicked.connect(self.retry)
         self.babort.clicked.connect(self.abort)
-        self.breload.clicked.connect(self.retry)
+        self.breload.clicked.connect(self.load_config)
         self.tstream.setInterval(50)
         self.tstream.timeout.connect(self.stream_tick)
         self.inputtext.returnPressed.connect(self.send)
