@@ -10,10 +10,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from api import abort, completion_stream
+from utils import make_subsdict,tool_call_generic
 import json
+import re
 from dataclasses import dataclass
 from typing import Iterator
-
 
 @dataclass
 class state:
@@ -61,7 +62,7 @@ class Window(QWidget):
         if is_new_turn:
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
             self.state.last_context = context
-        d = self.config["chat_template"]
+        d = make_subsdict(self.config)
         prom = context
         if self.config["no_think"]:
             s1, s2, s3 = prom.rpartition("\n{{[OUTPUT]}}\n")
@@ -92,9 +93,10 @@ class Window(QWidget):
             # "append" gives extra newline
             self.maintext.moveCursor(QTextCursor.MoveOperation.End)
             self.maintext.insertPlainText(chunk)
+            self.current_output+=chunk
         else:
             self.tstream.stop()
-
+            self.output_postprocess()
     def load_config(self):
         with open(self.config_path) as f:
             config = json.load(f)
@@ -108,3 +110,15 @@ class Window(QWidget):
         self.tstream.setInterval(50)
         self.tstream.timeout.connect(self.stream_tick)
         self.inputtext.returnPressed.connect(self.send)
+    def output_postprocess(self):
+        t=self.config["chat_template"]
+        pattern=t["tool_call_start"]+"(.*)"+t["tool_call_end"]
+        tool_match=re.search(pattern,self.current_output)
+        if tool_match:
+            call=tool_match[1]
+            result=tool_call_generic(call)
+            #note two \n help suppress possible generation of tool response tag
+            result=f"\n\n{t["tool_resp_start"]}{result}{t["tool_resp_end"]}\n"
+            self.maintext.insertPlainText(result)
+            #continue generation after tool returns
+            self.send()

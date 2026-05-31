@@ -1,6 +1,5 @@
 from PySide6.QtWidgets import QApplication
 from window import Window
-
 subs_dict = {
     "full-width quotes to half-width": {r"“|”": r'"'},
     "half-width quotes to full-width": {r"\"(.*?)\"", r"“\1”"},
