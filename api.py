@@ -3,7 +3,7 @@ import json
 import requests
 
 
-def textcomp_stream(prom: str, url: str, params: dict[str, str]):
+def completion_stream(prom: str, url: str, params: dict[str, str]):
     data = {"prompt": prom} | params
     with requests.post(url, json=data, stream=True) as response:
         for line in response.iter_lines(decode_unicode=True):
