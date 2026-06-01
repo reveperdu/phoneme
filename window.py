@@ -103,7 +103,7 @@ class Window(QWidget):
             # "append" gives extra newline
             self.maintext.moveCursor(QTextCursor.MoveOperation.End)
             self.maintext.insertPlainText(chunk)
-            self.current_output += chunk
+            self.state.current_output += chunk
         else:
             self.tstream.stop()
             self.output_postprocess()
@@ -125,7 +125,7 @@ class Window(QWidget):
     def output_postprocess(self):
         t = self.config["chat_template"]
         pattern = t["tool_call_start"] + "(.*)" + t["tool_call_end"]
-        tool_match = re.search(pattern, self.current_output)
+        tool_match = re.search(pattern, self.state.current_output)
         if tool_match:
             call = tool_match[1]
             result = tool_call_generic(call)
