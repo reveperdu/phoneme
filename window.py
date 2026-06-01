@@ -10,11 +10,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from api import abort, completion_stream
-from utils import make_subsdict,tool_call_generic
+from utils import make_subsdict, tool_call_generic
 import json
 import re
 from dataclasses import dataclass
 from typing import Iterator
+
 
 @dataclass
 class state:
@@ -22,6 +23,7 @@ class state:
     current_stream: None | Iterator = None
     context: str = ""
     last_context: str = ""
+    current_output: str = ""
 
 
 class Window(QWidget):
@@ -57,6 +59,7 @@ class Window(QWidget):
     def send(self):
         context = self.maintext.toPlainText()
         self.state.last_context = context
+        self.state.current_output = ""
         inputmsg = self.inputtext.text()
         is_new_turn = True if inputmsg != "" else False
         if is_new_turn:
@@ -72,9 +75,11 @@ class Window(QWidget):
             self.state.current_stream = completion_stream(
                 prom, self.config["api_stream"], self.config["params"]
             )
-        self.maintext.moveCursor(QTextCursor.MoveOperation.End)
+        # move cursor to end should put at the end because clear
+        # and setting text may also move cursor
         self.inputtext.clear()
         self.maintext.setPlainText(context)
+        self.maintext.moveCursor(QTextCursor.MoveOperation.End)
         self.tstream.start()
 
     def retry(self):
@@ -93,10 +98,11 @@ class Window(QWidget):
             # "append" gives extra newline
             self.maintext.moveCursor(QTextCursor.MoveOperation.End)
             self.maintext.insertPlainText(chunk)
-            self.current_output+=chunk
+            self.current_output += chunk
         else:
             self.tstream.stop()
             self.output_postprocess()
+
     def load_config(self):
         with open(self.config_path) as f:
             config = json.load(f)
@@ -110,15 +116,16 @@ class Window(QWidget):
         self.tstream.setInterval(50)
         self.tstream.timeout.connect(self.stream_tick)
         self.inputtext.returnPressed.connect(self.send)
+
     def output_postprocess(self):
-        t=self.config["chat_template"]
-        pattern=t["tool_call_start"]+"(.*)"+t["tool_call_end"]
-        tool_match=re.search(pattern,self.current_output)
+        t = self.config["chat_template"]
+        pattern = t["tool_call_start"] + "(.*)" + t["tool_call_end"]
+        tool_match = re.search(pattern, self.current_output)
         if tool_match:
-            call=tool_match[1]
-            result=tool_call_generic(call)
-            #note two \n help suppress possible generation of tool response tag
-            result=f"\n\n{t["tool_resp_start"]}{result}{t["tool_resp_end"]}\n"
+            call = tool_match[1]
+            result = tool_call_generic(call)
+            # note two \n help suppress possible generation of tool response tag
+            result = f"\n\n{t['tool_resp_start']}{result}{t['tool_resp_end']}\n"
             self.maintext.insertPlainText(result)
-            #continue generation after tool returns
+            # continue generation after tool returns
             self.send()
