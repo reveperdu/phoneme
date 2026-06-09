@@ -25,6 +25,8 @@ class State:
     last_context: str = ""
     current_output: str = ""
     should_abort: bool = False
+    is_networking: bool = False
+    statestring: str = ""
 
 
 class Window(QWidget):
@@ -51,7 +53,8 @@ class Window(QWidget):
         self.breload = QPushButton("reload")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
-        for btn in [self.breload, self.babort, self.bretry, self.bsend]:
+        self.active_buttons = [self.breload, self.babort, self.bretry, self.bsend]
+        for btn in self.active_buttons:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
         layout_main.addLayout(layout_buttons)
@@ -81,6 +84,8 @@ class Window(QWidget):
         self.inputtext.clear()
         self.maintext.setPlainText(context)
         self.maintext.moveCursor(QTextCursor.MoveOperation.End)
+        self.state.is_networking = True
+        self.update_window_state()
         self.tstream.start()
 
     def retry(self):
@@ -106,7 +111,7 @@ class Window(QWidget):
             self.state.current_output += chunk
         else:
             self.tstream.stop()
-            self.output_postprocess()
+            self.output_finalize()
 
     def load_config(self):
         with open(self.config_path) as f:
@@ -122,15 +127,27 @@ class Window(QWidget):
         self.tstream.timeout.connect(self.stream_tick)
         self.inputtext.returnPressed.connect(self.send)
 
-    def output_postprocess(self):
+    def output_finalize(self):
         t = self.config["chat_template"]
         pattern = t["tool_call_start"] + "(.*)" + t["tool_call_end"]
-        tool_match = re.search(pattern, self.state.current_output)
-        if tool_match:
-            call = tool_match[1]
+        is_tool_match = re.search(pattern, self.state.current_output)
+        if is_tool_match:
+            call = is_tool_match[1]
             result = tool_call_generic(call)
             # note two \n help suppress possible generation of tool response tag
             result = f"\n\n{t['tool_resp_start']}{result}{t['tool_resp_end']}\n"
             self.maintext.insertPlainText(result)
             # continue generation after tool returns
             self.send()
+        self.state.is_networking = False
+        self.update_window_state()
+
+    def update_window_state(self):
+        if self.state.is_networking:
+            for btn in self.active_buttons:
+                if btn != self.babort:
+                    btn.setEnabled(False)
+        if not self.state.is_networking:
+            for btn in self.active_buttons:
+                if btn != self.babort:
+                    btn.setEnabled(True)
