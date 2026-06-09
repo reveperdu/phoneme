@@ -1,4 +1,4 @@
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer,Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QLabel,
 )
 from utils import make_subsdict, tool_call_generic
 from api import abort_api, completion_stream_lcpp
@@ -26,8 +27,8 @@ class State:
     current_output: str = ""
     should_abort: bool = False
     is_networking: bool = False
-    statestring: str = ""
-
+    status_string: str= "ready"
+    available_status:tuple=("ready","GUI working","networking","streaming")
 
 class Window(QWidget):
     def __init__(self, config_path):
@@ -43,6 +44,7 @@ class Window(QWidget):
     def setup_ui(self):
         self.maintext = QPlainTextEdit()
         self.inputtext = QLineEdit()
+        self.statusdisplay=QLabel("ready")
         # the combo will be put inside a separate dialog, probably after using class for ui
         self.combo = QComboBox()
         layout_main = QVBoxLayout()
@@ -57,10 +59,13 @@ class Window(QWidget):
         for btn in self.active_buttons:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
+        layout_main.addWidget(self.statusdisplay)
+        self.statusdisplay.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout_main.addLayout(layout_buttons)
         layout_main.addWidget(self.inputtext)
 
     def send(self):
+        self.update_status_text("GUI working")
         context = self.maintext.toPlainText()
         self.state.last_context = context
         self.state.current_output = ""
@@ -76,7 +81,7 @@ class Window(QWidget):
             prom = s1 + s2 + self.config["nothink_tag"] + s3
         for k in d:
             prom = prom.replace(k, d[k])
-            self.state.current_stream = completion_stream_lcpp(
+        self.state.current_stream = completion_stream_lcpp(
                 prom, self.config["api_stream"], self.config["params"], self.state
             )
         # move cursor to end should put at the end because clear
@@ -84,10 +89,18 @@ class Window(QWidget):
         self.inputtext.clear()
         self.maintext.setPlainText(context)
         self.maintext.moveCursor(QTextCursor.MoveOperation.End)
+        self.update_status_text("networking")
         self.state.is_networking = True
         self.update_window_state()
         self.tstream.start()
-
+    def update_status_text(self,status:str):
+        if status in self.state.available_status:
+            self.state.status_string=status
+            self.statusdisplay.setText(status)
+        else:
+            print("warning, trying to set unavailable status ", status)
+            return
+        
     def retry(self):
         self.state.is_retry = True
         self.maintext.setPlainText(self.state.last_context)
@@ -104,6 +117,7 @@ class Window(QWidget):
     def stream_tick(self):
         assert self.state.current_stream is not None
         chunk = next(self.state.current_stream, None)
+        self.update_status_text("streaming")
         if chunk is not None:
             # "append" gives extra newline
             self.maintext.moveCursor(QTextCursor.MoveOperation.End)
@@ -140,6 +154,7 @@ class Window(QWidget):
             # continue generation after tool returns
             self.send()
         self.state.is_networking = False
+        self.update_status_text("ready")
         self.update_window_state()
 
     def update_window_state(self):
