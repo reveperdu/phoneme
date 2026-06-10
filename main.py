@@ -1,12 +1,17 @@
 from PySide6.QtWidgets import QApplication
 from window import Window
-subs_dict = {
-    "full-width quotes to half-width": {r"“|”": r'"'},
-    "half-width quotes to full-width": {r"\"(.*?)\"", r"“\1”"},
-}
+import argparse
+
+parser=argparse.ArgumentParser()
+parser.add_argument("-c","--config")
+args=parser.parse_args()
+config_path = "config.json"
+if args.config is not None:
+    config_path=args.config
+
 app = QApplication()
 
-config_path = "config.json"
+
 # setup ui & app
 win = Window(config_path=config_path)
 win.show()

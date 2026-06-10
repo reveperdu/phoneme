@@ -1,7 +1,6 @@
 from PySide6.QtCore import QTimer,Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLineEdit,
     QPlainTextEdit,
@@ -45,8 +44,6 @@ class Window(QWidget):
         self.maintext = QPlainTextEdit()
         self.inputtext = QLineEdit()
         self.statusdisplay=QLabel("ready")
-        # the combo will be put inside a separate dialog, probably after using class for ui
-        self.combo = QComboBox()
         layout_main = QVBoxLayout()
         self.bsubs = QPushButton("regex replace")
         self.bsend = QPushButton("send")
