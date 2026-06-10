@@ -73,7 +73,7 @@ class Window(QWidget):
             is_new_turn = True
         else:
             is_new_turn = False
-            self.state.current_output = "(None)"
+            self.state.current_input = "(None)"
         if is_new_turn:
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
             self.state.last_context = context
