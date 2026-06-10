@@ -1,4 +1,4 @@
-from PySide6.QtCore import QTimer,Qt
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -23,11 +23,13 @@ class State:
     current_stream: None | Iterator = None
     context: str = ""
     last_context: str = ""
+    current_input: str = ""
     current_output: str = ""
     should_abort: bool = False
     is_networking: bool = False
-    status_string: str= "ready"
-    available_status:tuple=("ready","GUI working","networking","streaming")
+    status_string: str = "ready"
+    available_status: tuple = ("ready", "GUI working", "networking", "streaming")
+
 
 class Window(QWidget):
     def __init__(self, config_path):
@@ -43,7 +45,7 @@ class Window(QWidget):
     def setup_ui(self):
         self.maintext = QPlainTextEdit()
         self.inputtext = QLineEdit()
-        self.statusdisplay=QLabel("ready")
+        self.statusdisplay = QLabel("ready")
         layout_main = QVBoxLayout()
         self.bsubs = QPushButton("regex replace")
         self.bsend = QPushButton("send")
@@ -67,10 +69,15 @@ class Window(QWidget):
         self.state.last_context = context
         self.state.current_output = ""
         inputmsg = self.inputtext.text()
-        is_new_turn = True if inputmsg != "" else False
+        if inputmsg != "":
+            is_new_turn = True
+        else:
+            is_new_turn = False
+            self.state.current_output = "(None)"
         if is_new_turn:
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
             self.state.last_context = context
+            self.state.current_input = inputmsg
         d = make_subsdict(self.config)
         prom = context
         if self.config["no_think"]:
@@ -79,8 +86,8 @@ class Window(QWidget):
         for k in d:
             prom = prom.replace(k, d[k])
         self.state.current_stream = completion_stream_lcpp(
-                prom, self.config["api_stream"], self.config["params"], self.state
-            )
+            prom, self.config["api_stream"], self.config["params"], self.state
+        )
         # move cursor to end should put at the end because clear
         # and setting text may also move cursor
         self.inputtext.clear()
@@ -90,14 +97,15 @@ class Window(QWidget):
         self.state.is_networking = True
         self.update_window_state()
         self.tstream.start()
-    def update_status_text(self,status:str):
+
+    def update_status_text(self, status: str):
         if status in self.state.available_status:
-            self.state.status_string=status
+            self.state.status_string = status
             self.statusdisplay.setText(status)
         else:
             print("warning, trying to set unavailable status ", status)
             return
-        
+
     def retry(self):
         self.state.is_retry = True
         self.maintext.setPlainText(self.state.last_context)
@@ -139,7 +147,16 @@ class Window(QWidget):
         self.inputtext.returnPressed.connect(self.send)
 
     def output_finalize(self):
+        self.handle_toolcall()
+        self.output_log()
+        self.state.is_networking = False
+        self.update_status_text("ready")
+        self.update_window_state()
+
+    def handle_toolcall(self):
         t = self.config["chat_template"]
+        if ("tool_call_start" not in t) or ("tool_call_end" not in t):
+            return
         pattern = t["tool_call_start"] + "(.*)" + t["tool_call_end"]
         is_tool_match = re.search(pattern, self.state.current_output)
         if is_tool_match:
@@ -150,9 +167,11 @@ class Window(QWidget):
             self.maintext.insertPlainText(result)
             # continue generation after tool returns
             self.send()
-        self.state.is_networking = False
-        self.update_status_text("ready")
-        self.update_window_state()
+
+    def output_log(self):
+        print(">", self.state.current_input)
+        print(self.state.current_output)
+        print()
 
     def update_window_state(self):
         if self.state.is_networking:
