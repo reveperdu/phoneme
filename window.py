@@ -64,6 +64,10 @@ class Window(QWidget):
         layout_main.addWidget(self.inputtext)
 
     def send(self):
+        if self.state.is_networking:
+            print("ignored attempt to send request, "
+            "a request is already active.")
+            return
         self.update_status_text("GUI working")
         context = self.maintext.toPlainText()
         self.state.last_context = context
@@ -174,11 +178,4 @@ class Window(QWidget):
         print()
 
     def update_window_state(self):
-        if self.state.is_networking:
-            for btn in self.active_buttons:
-                if btn != self.babort:
-                    btn.setEnabled(False)
-        if not self.state.is_networking:
-            for btn in self.active_buttons:
-                if btn != self.babort:
-                    btn.setEnabled(True)
+        pass
