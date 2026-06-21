@@ -8,8 +8,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QLabel,
+    QMenu,
 )
 from utils import make_subsdict, tool_call_generic
+from rendermath import render_math
 from api import abort_api, completion_stream_lcpp
 import json
 import re
@@ -52,9 +54,16 @@ class Window(QWidget):
         self.bretry = QPushButton("retry")
         self.babort = QPushButton("abort")
         self.breload = QPushButton("reload")
+        self.bextra = QPushButton("extra")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
-        self.active_buttons = [self.breload, self.babort, self.bretry, self.bsend]
+        self.active_buttons = [
+            self.bextra,
+            self.breload,
+            self.babort,
+            self.bretry,
+            self.bsend,
+        ]
         for btn in self.active_buttons:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
@@ -62,11 +71,14 @@ class Window(QWidget):
         self.statusdisplay.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout_main.addLayout(layout_buttons)
         layout_main.addWidget(self.inputtext)
+        self.extra_menu = QMenu()
+        self.bextra.setMenu(self.extra_menu)
+        extra_action1 = self.extra_menu.addAction("render math")
+        extra_action1.triggered.connect(lambda: render_math(self.state.current_output))
 
     def send(self):
         if self.state.is_networking:
-            print("ignored attempt to send request, "
-            "a request is already active.")
+            print("ignored attempt to send request, a request is already active.")
             return
         self.update_status_text("GUI working")
         context = self.maintext.toPlainText()
