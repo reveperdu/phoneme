@@ -49,7 +49,8 @@ class Window(QWidget):
         self.inputtext = QLineEdit()
         self.statusdisplay = QLabel("ready")
         layout_main = QVBoxLayout()
-        self.bsubs = QPushButton("regex replace")
+        # unused
+        # self.bsubs = QPushButton("regex replace")
         self.bsend = QPushButton("send")
         self.bretry = QPushButton("retry")
         self.babort = QPushButton("abort")
@@ -57,14 +58,14 @@ class Window(QWidget):
         self.bextra = QPushButton("extra")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
-        self.active_buttons = [
+        self.buttons = [
             self.bextra,
             self.breload,
             self.babort,
             self.bretry,
             self.bsend,
         ]
-        for btn in self.active_buttons:
+        for btn in self.buttons:
             layout_buttons.addWidget(btn)
         layout_main.addWidget(self.maintext)
         layout_main.addWidget(self.statusdisplay)
@@ -123,6 +124,9 @@ class Window(QWidget):
             return
 
     def retry(self):
+        if self.state.is_networking:
+            print("ignored attempt to send request, a request is already active.")
+            return
         self.state.is_retry = True
         self.maintext.setPlainText(self.state.last_context)
         self.send()
