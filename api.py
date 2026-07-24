@@ -18,8 +18,19 @@ def completion_stream_kcpp(prom: str, url: str, params: dict[str, str]):
                 yield tok
 
 
-def completion_stream_lcpp(prom: str, url: str, params: dict[str, str], state: State|None=None):
-    data = {"prompt": prom} | params | {"stream": True}
+def completion_stream_lcpp(
+    prom: str,
+    url: str,
+    params: dict[str, str],
+    state: State | None = None,
+    mmdata: list[str] | None = None,
+):
+    data={}
+    if mmdata is not None:
+        data["prompt"]={"prompt_string":prom,"multimodal_data": mmdata}
+    else:
+        data["prompt"]=prom
+    data = data | params | {"stream": True}
     with requests.post(url, json=data, stream=True) as response:
         response.encoding = "utf-8"
         for line in response.iter_lines(decode_unicode=True):

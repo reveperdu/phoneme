@@ -9,13 +9,15 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QMenu,
+    QFileDialog,
 )
 from utils import make_subsdict, tool_call_generic
 from rendermath import render_math
 from api import abort_api, completion_stream_lcpp
 import json
 import re
-from dataclasses import dataclass
+import base64
+from dataclasses import dataclass, field
 from typing import Iterator
 
 
@@ -31,6 +33,7 @@ class State:
     is_networking: bool = False
     status_string: str = "ready"
     available_status: tuple = ("ready", "GUI working", "networking", "streaming")
+    images: list[str] = field(default_factory=list)
 
 
 class Window(QWidget):
@@ -54,13 +57,11 @@ class Window(QWidget):
         self.bsend = QPushButton("send")
         self.bretry = QPushButton("retry")
         self.babort = QPushButton("abort")
-        self.breload = QPushButton("reload")
         self.bextra = QPushButton("extra")
         layout_buttons = QHBoxLayout()
         self.setLayout(layout_main)
         self.buttons = [
             self.bextra,
-            self.breload,
             self.babort,
             self.bretry,
             self.bsend,
@@ -76,8 +77,14 @@ class Window(QWidget):
         self.bextra.setMenu(self.extra_menu)
         extra_action1 = self.extra_menu.addAction("render math")
         extra_action1.triggered.connect(lambda: render_math(self.state.current_output))
+        extra_action2 = self.extra_menu.addAction("reload")
+        extra_action2.triggered.connect(self.load_config)
+        extra_action3 = self.extra_menu.addAction("load image")
+        extra_action3.triggered.connect(self.load_image)
 
     def send(self):
+        # refactor tip: use state.context instead of context, and pass only state to api,
+        # skipping "prom" and "mmdata"?
         if self.state.is_networking:
             print("ignored attempt to send request, a request is already active.")
             return
@@ -102,9 +109,21 @@ class Window(QWidget):
             prom = s1 + s2 + self.config["nothink_tag"] + s3
         for k in d:
             prom = prom.replace(k, d[k])
-        self.state.current_stream = completion_stream_lcpp(
-            prom, self.config["api_stream"], self.config["params"], self.state
-        )
+            if len(self.state.images) > 0:
+                self.state.current_stream = completion_stream_lcpp(
+                    prom,
+                    self.config["api_stream"],
+                    self.config["params"],
+                    self.state,
+                    self.state.images,
+                )
+            else:
+                self.state.current_stream = completion_stream_lcpp(
+                    prom,
+                    self.config["api_stream"],
+                    self.config["params"],
+                    self.state,
+                )
         # move cursor to end should put at the end because clear
         # and setting text may also move cursor
         self.inputtext.clear()
@@ -161,7 +180,6 @@ class Window(QWidget):
         self.bsend.clicked.connect(self.send)
         self.bretry.clicked.connect(self.retry)
         self.babort.clicked.connect(self.abort)
-        self.breload.clicked.connect(self.load_config)
         self.tstream.setInterval(50)
         self.tstream.timeout.connect(self.stream_tick)
         self.inputtext.returnPressed.connect(self.send)
@@ -173,7 +191,14 @@ class Window(QWidget):
         self.update_status_text("ready")
         self.update_window_state()
 
+    def load_image(self):
+        fpath = QFileDialog.getOpenFileName()[0]
+        with open(fpath, "rb") as f:
+            base64_str = base64.b64encode(f.read()).decode("utf-8")
+        self.state.images.append(base64_str)
+
     def handle_toolcall(self):
+        # stale. standard agentic workflow possibly out of scope.
         t = self.config["chat_template"]
         if ("tool_call_start" not in t) or ("tool_call_end" not in t):
             return
