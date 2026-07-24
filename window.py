@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QFileDialog,
 )
-from utils import make_subsdict, tool_call_generic
+from utils import tool_call_generic
 from rendermath import render_math
 from api import abort_api, completion_stream_lcpp
 import json
@@ -102,7 +102,7 @@ class Window(QWidget):
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
             self.state.last_context = context
             self.state.current_input = inputmsg
-        d = make_subsdict(self.config)
+        d = self.config["chat_template"]
         prom = context
         if self.config["no_think"]:
             s1, s2, s3 = prom.rpartition("\n{{[OUTPUT]}}\n")
