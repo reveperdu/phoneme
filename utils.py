@@ -40,12 +40,14 @@ def kcpp2oaicompat(context: str) -> list[dict[str, str]]:
 
 
 def sendto_api_generic(context, config, state: State):
+    # NOTE passing state here because passing a single state.should_abort
+    # will create a local var, disconnected from actual state.
     api_params = {
         "type": config["api_type"],
         "url_stream": config["url_stream"],
         "url_abort": config["url_abort"],
         "params": config["params"],
-        "should_abort": state.should_abort,
+        "state": state,
     }
     if config["api_type"] == "lcpp_stream":
         d = config["chat_template"]

@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+from typing import TYPE_CHECKING
 
 import requests
+
+if TYPE_CHECKING:
+    from window import State
 
 DISCARD_REASONING = True
 
@@ -22,7 +26,7 @@ def completion_stream(
     context,
     url_stream: str,
     params: dict[str, str],
-    should_abort: bool,
+    state: State,
     mmdata: list[str] | None = None,
     url_abort: str = "",
 ):
@@ -44,8 +48,8 @@ def completion_stream(
     with requests.post(url_stream, json=data, stream=True, headers=headers) as response:
         response.encoding = "utf-8"
         for line in response.iter_lines(decode_unicode=True):
-            if should_abort:
-                should_abort = False
+            if state.should_abort:
+                state.should_abort = False
                 if url_abort == "":
                     response.close()
                 else:
