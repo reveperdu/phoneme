@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 import json
 from typing import TYPE_CHECKING
-
 
 import requests
 
@@ -14,7 +14,7 @@ def completion_stream_kcpp(prom: str, url: str, params: dict[str, str]):
     with requests.post(url, json=data, stream=True) as response:
         for line in response.iter_lines(decode_unicode=True):
             if line.startswith("data: "):
-                tok = json.loads(line.lstrip("data: "))["token"]
+                tok = json.loads(line.removeprefix("data: "))["token"]
                 yield tok
 
 
@@ -39,7 +39,7 @@ def completion_stream_lcpp(
                 response.close()
                 break
             if line.startswith("data: "):
-                tok = json.loads(line.lstrip("data: "))["content"]
+                tok = json.loads(line.removeprefix("data: "))["content"]
                 yield tok
 
 

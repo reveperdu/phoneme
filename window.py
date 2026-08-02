@@ -1,24 +1,26 @@
-from PySide6.QtCore import QTimer, Qt
+import base64
+import json
+import re
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
+    QMenu,
     QPlainTextEdit,
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QLabel,
-    QMenu,
-    QFileDialog,
 )
-from utils import tool_call_generic
-from rendermath import render_math
+
 from api import abort_api, completion_stream_lcpp
-import json
-import re
-import base64
-from dataclasses import dataclass, field
-from typing import Iterator
+from rendermath import render_math
+from utils import tool_call_generic
 
 
 @dataclass

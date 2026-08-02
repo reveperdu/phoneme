@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QApplication
-from window import Window
 import argparse
+
+from PySide6.QtWidgets import QApplication
+
+from window import Window
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--config")
