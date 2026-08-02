@@ -51,7 +51,8 @@ def completion_stream(
                 else:
                     requests.post(url_stream)
                 break
-            print(line)  # debug
+            if line == "data: [DONE]":
+                return
             if line.startswith("data: "):
                 sse = json.loads(line.removeprefix("data: "))
                 if type == "lcpp_stream":
@@ -59,8 +60,6 @@ def completion_stream(
                 elif type == "oaicompat_stream":
                     # actually dpsk
                     delta = sse["choices"][0]["delta"]
-                    if line == "data: [DONE]":
-                        return
                     if sse["choices"][0]["delta"]["content"] is not None:
                         tok = delta["content"]
                     elif "reasoning_content" in delta:
