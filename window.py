@@ -17,13 +17,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from api import abort_api, completion_stream_lcpp
 from rendermath import render_math
+from utils import sendto_api_generic
 
 
 @dataclass
 class State:
     is_retry: bool = False
+    is_stream: bool = False
     current_stream: None | Iterator = None
     context: str = ""
     last_context: str = ""
@@ -83,7 +84,7 @@ class Window(QWidget):
         extra_action3.triggered.connect(self.load_image)
 
     def send(self):
-        # refactor tip: use state.context instead of context, and pass only state to api,
+        # maybe use state.context instead of context, and pass only state to api,
         # skipping "prom" and "mmdata"?
         if self.state.is_networking:
             print("ignored attempt to send request, a request is already active.")
@@ -102,28 +103,7 @@ class Window(QWidget):
             context = context + "\n{{[INPUT]}}\n" + inputmsg + "\n{{[OUTPUT]}}\n"
             self.state.last_context = context
             self.state.current_input = inputmsg
-        d = self.config["chat_template"]
-        prom = context
-        if self.config["no_think"]:
-            s1, s2, s3 = prom.rpartition("\n{{[OUTPUT]}}\n")
-            prom = s1 + s2 + self.config["nothink_tag"] + s3
-        for k in d:
-            prom = prom.replace(k, d[k])
-            if len(self.state.images) > 0:
-                self.state.current_stream = completion_stream_lcpp(
-                    prom,
-                    self.config["api_stream"],
-                    self.config["params"],
-                    self.state,
-                    self.state.images,
-                )
-            else:
-                self.state.current_stream = completion_stream_lcpp(
-                    prom,
-                    self.config["api_stream"],
-                    self.config["params"],
-                    self.state,
-                )
+        sendto_api_generic(context, self.config, self.state)
         # move cursor to end should put at the end because clear
         # and setting text may also move cursor
         self.inputtext.clear()
@@ -132,7 +112,8 @@ class Window(QWidget):
         self.update_status_text("networking")
         self.state.is_networking = True
         self.update_window_state()
-        self.tstream.start()
+        if self.state.is_stream:
+            self.tstream.start()
 
     def update_status_text(self, status: str):
         if status in self.state.available_status:
@@ -154,8 +135,6 @@ class Window(QWidget):
     def abort(self):
         # lcpp server does not have a abort endpoint
         # aborting is done by closing connection
-        if self.config["api_abort"] != "":
-            abort_api(self.config["api_abort"])
         self.state.should_abort = True
 
     def stream_tick(self):
