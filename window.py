@@ -1,6 +1,5 @@
 import base64
 import json
-import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
@@ -20,7 +19,6 @@ from PySide6.QtWidgets import (
 
 from api import abort_api, completion_stream_lcpp
 from rendermath import render_math
-from utils import tool_call_generic
 
 
 @dataclass
@@ -187,7 +185,6 @@ class Window(QWidget):
         self.inputtext.returnPressed.connect(self.send)
 
     def output_finalize(self):
-        self.handle_toolcall()
         self.output_log()
         self.state.is_networking = False
         self.update_status_text("ready")
@@ -198,22 +195,6 @@ class Window(QWidget):
         with open(fpath, "rb") as f:
             base64_str = base64.b64encode(f.read()).decode("utf-8")
         self.state.images.append(base64_str)
-
-    def handle_toolcall(self):
-        # stale. standard agentic workflow possibly out of scope.
-        t = self.config["chat_template"]
-        if ("tool_call_start" not in t) or ("tool_call_end" not in t):
-            return
-        pattern = t["tool_call_start"] + "(.*)" + t["tool_call_end"]
-        is_tool_match = re.search(pattern, self.state.current_output)
-        if is_tool_match:
-            call = is_tool_match[1]
-            result = tool_call_generic(call)
-            # note two \n help suppress possible generation of tool response tag
-            result = f"\n\n{t['tool_resp_start']}{result}{t['tool_resp_end']}\n"
-            self.maintext.insertPlainText(result)
-            # continue generation after tool returns
-            self.send()
 
     def output_log(self):
         print(">", self.state.current_input)
