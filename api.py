@@ -41,7 +41,13 @@ def completion_stream(
         else:
             data["prompt"] = context
     elif type == "oaicompat_stream":
-        apikey = os.environ["OAICOMPAT_APIKEY"]
+        if "OAICOMPAT_APIKEY" in os.environ:
+            apikey = os.environ["OAICOMPAT_APIKEY"]
+        else:
+            #echoed to avoid typo in the long hex-string of apikey
+            print("no apikey specified in envvar, please input ")
+            apikey = input("apikey: ")
+            os.environ["OAICOMPAT_APIKEY"] = apikey
         headers["Authorization"] = "Bearer " + apikey
         data["messages"] = context
     data = data | params | {"stream": True}
